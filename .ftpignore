@@ -1,0 +1,10 @@
+.git/
+.github/
+.gitignore
+.env.example
+.ftpignore
+node_modules/
+tests/
+*.md
+storage/debugbar/
+storage/framework/cache/data/

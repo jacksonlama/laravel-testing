@@ -1,0 +1,41 @@
+name: Deploy Laravel to InfinityFree via FTP
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, xml, intl, curl, gd, mysql, pdo, bcmath, zip
+
+      - name: Install Composer dependencies
+        run: |
+          composer install --no-dev --optimize-autoloader --no-interaction
+
+      - name: Setup .env file
+        run: |
+          cp .env.example .env
+          php artisan key:generate --force
+
+      - name: Cache optimization
+        run: |
+          php artisan config:cache || true
+          php artisan route:cache || true
+          php artisan view:cache || true
+
+      - name: Sync to InfinityFree via LFTP
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+          lftp -c "set ftp:ssl-allow no; set net:timeout 30; set net:max-retries 3; set net:reconnect-interval-base 5; open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' ${{ secrets.FTP_HOST }}; mirror -R --exclude-glob .git/ --exclude-glob .github/ --exclude-glob node_modules/ --exclude-glob tests/ --exclude-glob .gitignore --exclude-glob .env.example --exclude-glob '*.md' --exclude-glob storage/debugbar/ --exclude-glob storage/framework/cache/data/ ./ ${{ secrets.FTP_TARGET_FOLDER }}; quit"
